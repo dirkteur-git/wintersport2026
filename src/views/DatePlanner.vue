@@ -3,88 +3,119 @@
     <div class="container">
       <header class="planner-header">
         <div>
-          <h1>Datumplanner</h1>
-          <p class="subtitle">Plan je wintersport 2026</p>
+          <h1>Beschikbaarheid Overzicht</h1>
+          <p class="subtitle">Gezamenlijke beschikbaarheid van alle deelnemers</p>
         </div>
         <div class="header-actions">
           <button @click="loadAvailability" class="btn-icon" title="Herladen">
             <RefreshCw :size="20" :stroke-width="2" />
           </button>
-          <button @click="saveAvailability" class="btn-save">
-            <Save :size="20" :stroke-width="2" />
-            <span>Opslaan</span>
-          </button>
         </div>
       </header>
 
-      <div v-if="saveMessage" class="message">
-        <CheckCircle :size="16" :stroke-width="2" />
-        {{ saveMessage }}
+      <div class="legend-section">
+        <h3>Legenda</h3>
+        <div class="legend-grid">
+          <div class="legend-item">
+            <div class="legend-box level-4"></div>
+            <span>Iedereen beschikbaar (4/4)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box level-3"></div>
+            <span>3 personen beschikbaar</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box level-2"></div>
+            <span>2 personen beschikbaar</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box level-1"></div>
+            <span>1 persoon beschikbaar</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box level-0"></div>
+            <span>Niemand beschikbaar</span>
+          </div>
+        </div>
       </div>
 
-      <div class="participants">
+      <div class="participants-summary">
         <div
           v-for="participant in participants"
-          :key="participant"
-          class="participant-section"
+          :key="participant.id"
+          class="participant-row"
         >
-          <div class="participant-header">
-            <div class="participant-info">
-              <User :size="20" :stroke-width="2" />
-              <h2>{{ participant }}</h2>
-            </div>
-            <div class="participant-stats">
-              {{ getParticipantAvailableCount(participant) }} van {{ totalWeeks }} weken beschikbaar
-            </div>
+          <div class="participant-name">
+            <User :size="18" :stroke-width="2" />
+            {{ participant.name }}
           </div>
-
-          <div class="calendar-container">
-            <div class="month-labels">
-              <div v-for="month in months" :key="month.name" :style="{ gridColumn: `span ${month.weeks}` }">
+          <div class="participant-github-calendar">
+            <div class="months-row">
+              <div v-for="month in months" :key="month.name" class="month-label" :style="{ width: `${month.days * 14}px` }">
                 {{ month.name }}
               </div>
             </div>
-
-            <div class="calendar-grid">
+            <div class="days-row">
               <div
-                v-for="(week, index) in weeks"
-                :key="index"
-                class="week-cell"
-                :class="getWeekClass(week, participant)"
-                :title="getWeekTooltip(week, participant)"
-                @click="toggleWeek(week, participant)"
+                v-for="day in allDays"
+                :key="day"
+                :class="['day-box', getDayClass(day, participant.id)]"
+                :title="getDayTooltip(day, participant.id)"
               >
-                <div class="week-number">{{ week.weekNumber }}</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="best-weeks">
-        <h2>Beste weken</h2>
-        <p class="section-subtitle">Weken waar iedereen kan</p>
-        <div class="weeks-list">
-          <div
-            v-for="summary in weekSummary"
-            :key="summary.week.start"
-            class="week-summary"
-            :class="{ 'week-perfect': summary.available === 4 }"
-          >
-            <div class="week-info">
-              <div class="week-label">Week {{ summary.week.weekNumber }}</div>
-              <div class="week-dates">{{ formatWeekRange(summary.week) }}</div>
+      <div class="combined-calendar">
+        <h2>Gecombineerde Beschikbaarheid</h2>
+        <p class="section-subtitle">Hoe meer mensen beschikbaar, hoe groener de dag</p>
+
+        <div class="calendar-scroll">
+          <div class="github-calendar">
+            <div class="months-header">
+              <div v-for="month in months" :key="month.name" class="month-header" :style="{ width: `${month.days * 14}px` }">
+                {{ month.name }}
+              </div>
             </div>
-            <div class="week-availability">
-              <div class="availability-bar">
+            <div class="days-container">
+              <div
+                v-for="day in allDays"
+                :key="day"
+                :class="['day-cell', getAvailabilityClass(day)]"
+                :title="getAvailabilityTooltip(day)"
+              >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="best-days">
+        <h2>Beste Dagen</h2>
+        <p class="section-subtitle">Dagen waar de meeste mensen kunnen</p>
+        <div class="days-list">
+          <div
+            v-for="summary in topDays"
+            :key="summary.date"
+            :class="['day-summary', `level-${summary.available}`]"
+          >
+            <div class="day-info">
+              <div class="day-date">{{ formatDate(summary.date) }}</div>
+              <div class="day-weekday">{{ formatWeekday(summary.date) }}</div>
+            </div>
+            <div class="day-availability">
+              <div class="availability-badges">
                 <div
-                  class="availability-fill"
-                  :style="{ width: `${(summary.available / 4) * 100}%` }"
-                ></div>
+                  v-for="participant in participants"
+                  :key="participant.id"
+                  :class="['participant-badge', { available: isParticipantAvailable(summary.date, participant.id) }]"
+                >
+                  {{ participant.name.charAt(0) }}
+                </div>
               </div>
-              <div class="availability-text">
-                {{ summary.available }}/4
-              </div>
+              <div class="availability-count">{{ summary.available }}/4</div>
             </div>
           </div>
         </div>
@@ -95,116 +126,116 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { User, Save, RefreshCw, CheckCircle } from 'lucide-vue-next'
+import { User, RefreshCw } from 'lucide-vue-next'
 
-const participants = ['Guus', 'Rene', 'Harm', 'Dirk']
+const participants = [
+  { id: 'guus', name: 'Guus' },
+  { id: 'rene', name: 'Rene' },
+  { id: 'harm', name: 'Harm' },
+  { id: 'dirk', name: 'Dirk' }
+]
+
 const availability = ref({})
-const saveMessage = ref('')
 
-// Generate weeks for 2026 (Jan - Apr)
-const weeks = computed(() => {
-  const weeksList = []
-  const startDate = new Date('2026-01-05') // First Monday
-  const endDate = new Date('2026-04-27') // Last week of April
+const allDays = computed(() => {
+  const days = []
+  const start = new Date('2026-01-01')
+  const end = new Date('2026-04-30')
+  const current = new Date(start)
 
-  let currentDate = new Date(startDate)
-  let weekNum = 1
-
-  while (currentDate <= endDate) {
-    const weekStart = new Date(currentDate)
-    const weekEnd = new Date(currentDate)
-    weekEnd.setDate(weekEnd.getDate() + 6)
-
-    weeksList.push({
-      weekNumber: weekNum,
-      start: weekStart.toISOString().split('T')[0],
-      end: weekEnd.toISOString().split('T')[0],
-      month: weekStart.getMonth()
-    })
-
-    currentDate.setDate(currentDate.getDate() + 7)
-    weekNum++
+  while (current <= end) {
+    days.push(current.toISOString().split('T')[0])
+    current.setDate(current.getDate() + 1)
   }
 
-  return weeksList
+  return days
 })
 
 const months = computed(() => {
+  const monthsData = []
   const monthNames = ['Jan', 'Feb', 'Mrt', 'Apr']
-  const monthWeeks = [0, 0, 0, 0]
 
-  weeks.value.forEach(week => {
-    monthWeeks[week.month]++
-  })
+  for (let m = 0; m < 4; m++) {
+    const year = 2026
+    const firstDay = new Date(year, m, 1)
+    const lastDay = new Date(year, m + 1, 0)
+    const days = lastDay.getDate()
 
-  return monthNames.map((name, index) => ({
-    name,
-    weeks: monthWeeks[index]
-  })).filter(m => m.weeks > 0)
+    monthsData.push({
+      name: monthNames[m],
+      days: days
+    })
+  }
+
+  return monthsData
 })
 
-const totalWeeks = computed(() => weeks.value.length)
-
-const weekSummary = computed(() => {
-  return weeks.value.map(week => {
+const topDays = computed(() => {
+  return allDays.value.map(date => {
     const available = participants.filter(p =>
-      !availability.value[week.start]?.[p]
+      !availability.value[p.id]?.[date]
     ).length
 
-    return { week, available }
-  }).filter(s => s.available > 0).sort((a, b) => b.available - a.available).slice(0, 10)
+    return { date, available }
+  }).filter(s => s.available > 0)
+    .sort((a, b) => b.available - a.available)
+    .slice(0, 20)
 })
 
-function getParticipantAvailableCount(participant) {
-  return weeks.value.filter(week =>
-    !availability.value[week.start]?.[participant]
+function getAvailabilityClass(date) {
+  const available = participants.filter(p =>
+    !availability.value[p.id]?.[date]
   ).length
+
+  return `level-${available}`
 }
 
-function toggleWeek(week, participant) {
-  if (!availability.value[week.start]) {
-    availability.value[week.start] = {}
-  }
-  availability.value[week.start][participant] = !availability.value[week.start][participant]
+function getAvailabilityTooltip(date) {
+  const available = participants.filter(p =>
+    !availability.value[p.id]?.[date]
+  ).length
+
+  const names = participants
+    .filter(p => !availability.value[p.id]?.[date])
+    .map(p => p.name)
+    .join(', ')
+
+  return `${formatDate(date)}: ${available}/4 beschikbaar${names ? ` (${names})` : ''}`
 }
 
-function getWeekClass(week, participant) {
-  const notAvailable = availability.value[week.start]?.[participant]
-  return notAvailable ? 'not-available' : 'available'
+function getDayClass(date, participantId) {
+  return availability.value[participantId]?.[date] ? 'not-available' : 'available'
 }
 
-function getWeekTooltip(week, participant) {
-  const notAvailable = availability.value[week.start]?.[participant]
-  const status = notAvailable ? 'Niet beschikbaar' : 'Beschikbaar'
-  return `Week ${week.weekNumber} (${formatWeekRange(week)}): ${status}`
+function getDayTooltip(date, participantId) {
+  const status = availability.value[participantId]?.[date] ? 'Niet beschikbaar' : 'Beschikbaar'
+  return `${formatDate(date)}: ${status}`
 }
 
-function formatWeekRange(week) {
-  const start = new Date(week.start)
-  const end = new Date(week.end)
-  return `${start.getDate()} ${start.toLocaleDateString('nl-NL', { month: 'short' })} - ${end.getDate()} ${end.toLocaleDateString('nl-NL', { month: 'short' })}`
+function isParticipantAvailable(date, participantId) {
+  return !availability.value[participantId]?.[date]
 }
 
-async function saveAvailability() {
-  try {
-    localStorage.setItem('wintersport2026-availability', JSON.stringify(availability.value))
-    saveMessage.value = 'Opgeslagen'
-    setTimeout(() => saveMessage.value = '', 3000)
-  } catch (error) {
-    saveMessage.value = 'Fout bij opslaan'
-  }
+function formatDate(dateString) {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+function formatWeekday(dateString) {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('nl-NL', { weekday: 'long' })
 }
 
 function loadAvailability() {
   try {
-    const saved = localStorage.getItem('wintersport2026-availability')
-    if (saved) {
-      availability.value = JSON.parse(saved)
-      saveMessage.value = 'Geladen'
-      setTimeout(() => saveMessage.value = '', 3000)
-    }
+    const allData = JSON.parse(localStorage.getItem('wintersport2026-availability') || '{}')
+    availability.value = allData
   } catch (error) {
-    saveMessage.value = 'Fout bij laden'
+    console.error('Error loading availability:', error)
   }
 }
 
@@ -215,13 +246,13 @@ onMounted(() => {
 
 <style scoped>
 .date-planner {
-  min-height: 100vh;
+  min-height: calc(100vh - 65px);
   padding: 3rem 0;
   background: var(--color-bg);
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 2rem;
 }
@@ -246,6 +277,11 @@ onMounted(() => {
   font-size: 1.0625rem;
 }
 
+.section-subtitle {
+  color: var(--color-gray-500);
+  margin-bottom: 1.5rem;
+}
+
 .header-actions {
   display: flex;
   gap: 0.75rem;
@@ -258,81 +294,82 @@ onMounted(() => {
   justify-content: center;
 }
 
-.btn-save {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--color-text);
-  color: var(--color-bg);
-  border-color: var(--color-text);
-}
-
-.btn-save:hover {
-  opacity: 0.9;
-}
-
-.message {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  background: var(--color-gray-100);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 8px;
+.legend-section {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
   margin-bottom: 2rem;
-  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
 }
 
-.participants {
-  display: flex;
-  flex-direction: column;
-  gap: 3rem;
-  margin-bottom: 4rem;
-}
-
-.participant-section {
-  border: 1px solid var(--color-gray-200);
-  border-radius: 12px;
-  padding: 2rem;
-  background: var(--color-bg);
-}
-
-.participant-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.participant-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.participant-info h2 {
-  font-size: 1.5rem;
+.legend-section h3 {
+  font-size: 1.125rem;
   font-weight: 600;
-  margin: 0;
+  margin-bottom: 1rem;
 }
 
-.participant-stats {
-  color: var(--color-gray-500);
-  font-size: 0.9375rem;
-  font-weight: 500;
+.legend-grid {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
-.calendar-container {
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.legend-box {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--color-gray-300);
+}
+
+.participants-summary {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.participant-row {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.participant-row:last-child {
+  border-bottom: none;
+}
+
+.participant-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  min-width: 100px;
+  color: var(--color-primary);
+}
+
+.participant-github-calendar {
+  flex: 1;
   overflow-x: auto;
 }
 
-.month-labels {
-  display: grid;
-  grid-template-columns: repeat(17, 1fr);
-  gap: 4px;
-  margin-bottom: 8px;
+.months-row, .months-header {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.month-label, .month-header {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-gray-500);
@@ -340,154 +377,147 @@ onMounted(() => {
   letter-spacing: 0.05em;
 }
 
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(17, 1fr);
-  gap: 4px;
-}
-
-.week-cell {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.days-row, .days-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid transparent;
-  min-width: 48px;
-  min-height: 48px;
+  gap: 2px;
+  flex-wrap: wrap;
 }
 
-.week-number {
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.week-cell:hover .week-number {
-  opacity: 1;
-}
-
-.week-cell.available {
-  background: var(--color-gray-100);
-  border-color: var(--color-gray-200);
-}
-
-.week-cell.available:hover {
-  background: var(--color-gray-200);
-  border-color: var(--color-gray-400);
-  transform: scale(1.05);
-}
-
-.week-cell.not-available {
-  background: var(--color-text);
-  color: var(--color-bg);
-  border-color: var(--color-text);
-}
-
-.week-cell.not-available:hover {
-  opacity: 0.8;
-  transform: scale(1.05);
-}
-
-.best-weeks {
-  margin-top: 4rem;
-  padding: 2rem;
+.day-box, .day-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
   border: 1px solid var(--color-gray-200);
-  border-radius: 12px;
-  background: var(--color-gray-50);
 }
 
-.best-weeks h2 {
+.day-box.available {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.day-box.not-available {
+  background: var(--color-gray-200);
+  border-color: var(--color-gray-300);
+}
+
+.combined-calendar {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.combined-calendar h2 {
   font-size: 1.75rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
-.section-subtitle {
-  color: var(--color-gray-500);
-  margin-bottom: 1.5rem;
+.calendar-scroll {
+  overflow-x: auto;
+  margin: 0 -2rem;
+  padding: 0 2rem;
 }
 
-.weeks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.github-calendar {
+  min-width: min-content;
 }
 
-.week-summary {
+.level-0 { background: var(--color-gray-100); border-color: var(--color-gray-200); }
+.level-1 { background: #bfdbfe; border-color: #93c5fd; }
+.level-2 { background: #60a5fa; border-color: #3b82f6; }
+.level-3 { background: #3b82f6; border-color: #2563eb; }
+.level-4 { background: #1d4ed8; border-color: #1e40af; }
+
+.best-days {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.best-days h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.days-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.day-summary {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 2px solid var(--color-gray-200);
   transition: all 0.2s;
 }
 
-.week-summary:hover {
-  border-color: var(--color-gray-400);
+.day-summary:hover {
   transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
-.week-summary.week-perfect {
-  background: var(--color-text);
-  color: var(--color-bg);
-  border-color: var(--color-text);
+.day-summary.level-4 {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: var(--color-primary);
 }
 
-.week-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.day-info {
+  flex: 1;
 }
 
-.week-label {
+.day-date {
   font-weight: 600;
   font-size: 1.0625rem;
+  margin-bottom: 0.25rem;
 }
 
-.week-dates {
+.day-weekday {
+  color: var(--color-gray-500);
   font-size: 0.875rem;
-  opacity: 0.7;
 }
 
-.week-availability {
+.day-availability {
   display: flex;
   align-items: center;
   gap: 1rem;
-  min-width: 150px;
 }
 
-.availability-bar {
-  flex: 1;
-  height: 8px;
-  background: var(--color-gray-200);
-  border-radius: 4px;
-  overflow: hidden;
+.availability-badges {
+  display: flex;
+  gap: 0.5rem;
 }
 
-.week-summary.week-perfect .availability-bar {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.availability-fill {
-  height: 100%;
-  background: var(--color-text);
-  transition: width 0.3s ease;
-}
-
-.week-summary.week-perfect .availability-fill {
-  background: var(--color-bg);
-}
-
-.availability-text {
+.participant-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 600;
-  font-size: 0.9375rem;
-  min-width: 40px;
+  font-size: 0.875rem;
+  background: var(--color-gray-200);
+  color: var(--color-gray-500);
+  transition: all 0.2s;
+}
+
+.participant-badge.available {
+  background: var(--color-primary);
+  color: white;
+}
+
+.availability-count {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--color-primary);
+  min-width: 50px;
   text-align: right;
 }
 
@@ -496,28 +526,47 @@ onMounted(() => {
     font-size: 2rem;
   }
 
-  .participant-section {
-    padding: 1.5rem;
+  .legend-grid {
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
-  .calendar-grid,
-  .month-labels {
-    grid-template-columns: repeat(17, 40px);
-  }
-
-  .week-cell {
-    min-width: 40px;
-    min-height: 40px;
-  }
-
-  .week-summary {
+  .participant-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
 
-  .week-availability {
+  .day-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .day-availability {
     width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .legend-section,
+  .participants-summary,
+  .combined-calendar,
+  .best-days {
+    background: var(--color-gray-800);
+  }
+
+  .participant-row {
+    border-bottom-color: var(--color-gray-700);
+  }
+
+  .day-summary {
+    border-color: var(--color-gray-700);
+  }
+
+  .day-summary.level-4 {
+    background: linear-gradient(135deg, #1e293b, #334155);
   }
 }
 </style>

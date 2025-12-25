@@ -9,16 +9,17 @@
           playsinline
           class="hero-video"
         >
-          <source src="https://cdn.coverr.co/videos/coverr-snowboarder-riding-down-a-mountain-6004/1080p.mp4" type="video/mp4">
+          <source src="https://videos.pexels.com/video-files/4615429/4615429-uhd_2560_1440_24fps.mp4" type="video/mp4">
         </video>
         <div class="video-overlay"></div>
+        <div class="snow-overlay"></div>
       </div>
 
       <div class="hero-content">
         <h1 class="hero-title">Wintersport 2026</h1>
         <p class="hero-subtitle">Guus · Rene · Harm · Dirk</p>
         <div class="hero-actions">
-          <router-link to="/datumplanner" class="btn-primary">
+          <router-link to="/login" class="btn-primary">
             <Calendar :size="20" :stroke-width="2" />
             Plan je data
           </router-link>
@@ -33,7 +34,7 @@
     <section class="features">
       <div class="container">
         <div class="feature-grid">
-          <router-link to="/datumplanner" class="feature-card">
+          <router-link to="/login" class="feature-card">
             <div class="feature-icon">
               <Calendar :size="32" :stroke-width="1.5" />
             </div>
@@ -133,7 +134,35 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6));
+  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.2), rgba(15, 23, 42, 0.7));
+}
+
+.snow-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(2px 2px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent),
+    radial-gradient(2px 2px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 33% 80%, white, transparent);
+  background-size: 200% 200%;
+  animation: snowfall 20s linear infinite;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+@keyframes snowfall {
+  0% {
+    background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%;
+  }
+  100% {
+    background-position: 0% 100%, 0% 100%, 0% 100%, 0% 100%, 0% 100%, 0% 100%;
+  }
 }
 
 .hero-content {
@@ -173,7 +202,7 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 2rem;
-  border-radius: 8px;
+  border-radius: 12px;
   text-decoration: none;
   font-weight: 600;
   font-size: 1.0625rem;
@@ -182,25 +211,30 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
 }
 
 .btn-primary {
-  background: white;
-  color: black;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.6);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
 }
 
 .btn-secondary {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
   color: white;
-  border-color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .btn-secondary:hover {
-  background: white;
-  color: black;
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
   transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.3);
 }
 
 .features {
@@ -224,25 +258,29 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
   position: relative;
   padding: 2.5rem 2rem;
   border: 1px solid var(--color-gray-200);
-  border-radius: 12px;
+  border-radius: 16px;
   text-decoration: none;
   color: var(--color-text);
   transition: all 0.3s ease;
-  background: var(--color-bg);
+  background: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05);
 }
 
 .feature-card:hover {
-  border-color: var(--color-text);
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-primary);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+  background: linear-gradient(135deg, white, var(--color-snow));
 }
 
 .feature-card:hover .feature-arrow {
   transform: translateX(4px);
+  color: var(--color-primary);
 }
 
 .feature-icon {
   margin-bottom: 1.5rem;
+  color: var(--color-primary);
 }
 
 .feature-card h3 {
@@ -266,9 +304,9 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
 
 .stats {
   padding: 6rem 0;
-  background: var(--color-gray-50);
-  border-top: 1px solid var(--color-gray-200);
-  border-bottom: 1px solid var(--color-gray-200);
+  background: linear-gradient(135deg, var(--color-ice), var(--color-snow));
+  border-top: 1px solid var(--color-frost);
+  border-bottom: 1px solid var(--color-frost);
 }
 
 .stats-grid {
@@ -279,6 +317,7 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
 
 .stat {
   text-align: center;
+  color: var(--color-primary);
 }
 
 .stat-number {
@@ -286,10 +325,14 @@ import { Calendar, MapPin, ArrowRight, Plane, Mountain, Users } from 'lucide-vue
   font-weight: 700;
   margin: 1rem 0 0.5rem;
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .stat-label {
-  color: var(--color-gray-500);
+  color: var(--color-gray-600);
   font-size: 1.0625rem;
   font-weight: 500;
 }

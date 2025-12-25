@@ -5,6 +5,8 @@ import App from './App.vue'
 import Home from './views/Home.vue'
 import DatePlanner from './views/DatePlanner.vue'
 import Map from './views/Map.vue'
+import Login from './views/Login.vue'
+import MyAvailability from './views/MyAvailability.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,6 +14,8 @@ const router = createRouter({
     { path: '/', component: Home },
     { path: '/datumplanner', component: DatePlanner },
     { path: '/kaart', component: Map },
+    { path: '/login', component: Login },
+    { path: '/mijn-beschikbaarheid', component: MyAvailability },
   ]
 })
 
