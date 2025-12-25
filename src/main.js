@@ -4,16 +4,14 @@ import './style.css'
 import App from './App.vue'
 import Home from './views/Home.vue'
 import DatePlanner from './views/DatePlanner.vue'
-import SkiResorts from './views/SkiResorts.vue'
-import Airports from './views/Airports.vue'
+import Map from './views/Map.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Home },
     { path: '/datumplanner', component: DatePlanner },
-    { path: '/skigebieden', component: SkiResorts },
-    { path: '/vliegvelden', component: Airports },
+    { path: '/kaart', component: Map },
   ]
 })
 
