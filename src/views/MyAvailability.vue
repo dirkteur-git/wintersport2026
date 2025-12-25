@@ -4,7 +4,7 @@
       <header class="page-header">
         <div>
           <h1>Hallo {{ userName }}!</h1>
-          <p class="subtitle">Klik op dagen om aan te geven wanneer je NIET kunt</p>
+          <p class="subtitle">Klik op vakjes om aan te geven wanneer je NIET kunt (rood = niet beschikbaar)</p>
         </div>
         <div class="header-actions">
           <button @click="logout" class="btn-secondary">
@@ -23,50 +23,65 @@
         {{ saveMessage }}
       </div>
 
-      <div class="calendar-section">
-        <div class="calendar-header">
-          <h2>Januari - April 2026</h2>
-          <div class="legend">
-            <div class="legend-item">
-              <div class="legend-box available"></div>
-              <span>Beschikbaar</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-box not-available"></div>
-              <span>Niet beschikbaar</span>
+      <div class="legend-section">
+        <div class="legend-item">
+          <div class="legend-box available"></div>
+          <span>Beschikbaar (groen)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box not-available"></div>
+          <span>Niet beschikbaar (rood)</span>
+        </div>
+      </div>
+
+      <div class="github-calendar-section">
+        <h2>Januari - April 2026</h2>
+
+        <div class="calendar-wrapper">
+          <div class="month-labels">
+            <div v-for="month in months" :key="month.name" class="month-label" :style="{ width: `${month.weeks * 15}px` }">
+              {{ month.name }}
             </div>
           </div>
-        </div>
 
-        <div class="calendar-scroll">
-          <div class="calendar-horizontal">
-            <div class="month-section" v-for="month in months" :key="month.name">
-              <div class="month-header">{{ month.name }} {{ month.year }}</div>
-              <div class="days-grid">
-                <div class="weekday-labels">
-                  <div class="weekday-label">Ma</div>
-                  <div class="weekday-label">Di</div>
-                  <div class="weekday-label">Wo</div>
-                  <div class="weekday-label">Do</div>
-                  <div class="weekday-label">Vr</div>
-                  <div class="weekday-label">Za</div>
-                  <div class="weekday-label">Zo</div>
-                </div>
-                <div class="days-container">
-                  <div
-                    v-for="day in month.days"
-                    :key="day.date"
-                    :class="['day-cell', {
-                      'not-available': isNotAvailable(day.date),
-                      'other-month': !day.currentMonth,
-                      'today': isToday(day.date)
-                    }]"
-                    @click="day.currentMonth && toggleDay(day.date)"
-                  >
-                    <span class="day-number">{{ day.day }}</span>
-                  </div>
+          <div class="calendar-grid">
+            <div class="weekday-labels">
+              <div class="weekday-label">Ma</div>
+              <div class="weekday-label">Di</div>
+              <div class="weekday-label">Wo</div>
+              <div class="weekday-label">Do</div>
+              <div class="weekday-label">Vr</div>
+              <div class="weekday-label">Za</div>
+              <div class="weekday-label">Zo</div>
+            </div>
+
+            <div class="weeks-container">
+              <div
+                v-for="week in allWeeks"
+                :key="week.start"
+                class="week-column"
+              >
+                <div
+                  v-for="day in week.days"
+                  :key="day.date"
+                  :class="['day-cell', {
+                    'available': !isNotAvailable(day.date) && day.inPeriod,
+                    'not-available': isNotAvailable(day.date) && day.inPeriod,
+                    'out-of-period': !day.inPeriod,
+                    'spring-break': isSpringBreak(day.date) && day.inPeriod
+                  }]"
+                  :title="getDayTooltip(day)"
+                  @click="day.inPeriod && toggleDay(day.date)"
+                >
+                  <span v-if="day.inPeriod" class="day-number">{{ day.day }}</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div class="week-numbers">
+            <div v-for="week in allWeeks" :key="week.start" class="week-number">
+              W{{ week.weekNumber }}
             </div>
           </div>
         </div>
@@ -74,16 +89,16 @@
 
       <div class="stats-section">
         <div class="stat-card">
-          <Calendar :size="24" :stroke-width="1.5" />
+          <CheckCircle :size="24" :stroke-width="1.5" class="stat-icon-green" />
           <div class="stat-content">
-            <div class="stat-number">{{ availableDays }}</div>
+            <div class="stat-number green">{{ availableDays }}</div>
             <div class="stat-label">Dagen beschikbaar</div>
           </div>
         </div>
         <div class="stat-card">
-          <XCircle :size="24" :stroke-width="1.5" />
+          <XCircle :size="24" :stroke-width="1.5" class="stat-icon-red" />
           <div class="stat-content">
-            <div class="stat-number">{{ notAvailableDays }}</div>
+            <div class="stat-number red">{{ notAvailableDays }}</div>
             <div class="stat-label">Dagen niet beschikbaar</div>
           </div>
         </div>
@@ -95,7 +110,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Save, LogOut, CheckCircle, Calendar, XCircle } from 'lucide-vue-next'
+import { Save, LogOut, CheckCircle, XCircle } from 'lucide-vue-next'
 
 const router = useRouter()
 const userId = ref(null)
@@ -110,48 +125,78 @@ const participantNames = {
   'dirk': 'Dirk'
 }
 
-const months = computed(() => {
-  const monthsData = []
-  const monthNames = ['Januari', 'Februari', 'Maart', 'April']
+// Generate all weeks from Jan to Apr 2026
+const allWeeks = computed(() => {
+  const weeks = []
+  const startDate = new Date('2026-01-05') // Monday of first week
+  const endDate = new Date('2026-04-26') // Last Sunday in April
 
-  for (let m = 0; m < 4; m++) {
-    const year = 2026
-    const month = m
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
+  let currentMonday = new Date(startDate)
+  let weekNumber = 1
 
-    // Start from Monday of the week containing the 1st
-    const startDate = new Date(firstDay)
-    const dayOfWeek = startDate.getDay()
-    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    startDate.setDate(startDate.getDate() - daysToSubtract)
-
-    // End on Sunday of the week containing the last day
-    const endDate = new Date(lastDay)
-    const endDayOfWeek = endDate.getDay()
-    const daysToAdd = endDayOfWeek === 0 ? 0 : 7 - endDayOfWeek
-    endDate.setDate(endDate.getDate() + daysToAdd)
-
-    const days = []
-    const currentDate = new Date(startDate)
-
-    while (currentDate <= endDate) {
-      days.push({
-        date: currentDate.toISOString().split('T')[0],
-        day: currentDate.getDate(),
-        currentMonth: currentDate.getMonth() === month
-      })
-      currentDate.setDate(currentDate.getDate() + 1)
+  while (currentMonday <= endDate) {
+    const week = {
+      start: currentMonday.toISOString().split('T')[0],
+      weekNumber: weekNumber,
+      days: []
     }
 
-    monthsData.push({
-      name: monthNames[m],
-      year: year,
-      days: days
-    })
+    // Add 7 days for this week
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(currentMonday)
+      day.setDate(day.getDate() + i)
+      const dateStr = day.toISOString().split('T')[0]
+      const inPeriod = day >= new Date('2026-01-01') && day <= new Date('2026-04-30')
+
+      week.days.push({
+        date: dateStr,
+        day: day.getDate(),
+        month: day.getMonth(),
+        inPeriod: inPeriod
+      })
+    }
+
+    weeks.push(week)
+    currentMonday.setDate(currentMonday.getDate() + 7)
+    weekNumber++
   }
 
-  return monthsData
+  return weeks
+})
+
+const months = computed(() => {
+  const monthData = []
+  const monthNames = ['Jan', 'Feb', 'Mrt', 'Apr']
+
+  // Calculate weeks per month based on which month has the most days in each week
+  const monthWeeks = [0, 0, 0, 0] // Jan, Feb, Mrt, Apr
+
+  allWeeks.value.forEach(week => {
+    // Count days per month in this week
+    const daysPerMonth = [0, 0, 0, 0]
+    week.days.forEach(day => {
+      if (day.inPeriod) {
+        daysPerMonth[day.month]++
+      }
+    })
+
+    // Assign week to the month with most days
+    const maxMonth = daysPerMonth.indexOf(Math.max(...daysPerMonth))
+    if (maxMonth >= 0 && maxMonth < 4) {
+      monthWeeks[maxMonth]++
+    }
+  })
+
+  monthNames.forEach((name, index) => {
+    if (monthWeeks[index] > 0) {
+      monthData.push({
+        name: name,
+        weeks: monthWeeks[index]
+      })
+    }
+  })
+
+  return monthData
 })
 
 const allDaysInPeriod = computed(() => {
@@ -169,20 +214,15 @@ const allDaysInPeriod = computed(() => {
 })
 
 const availableDays = computed(() => {
-  return allDaysInPeriod.value.length - unavailableDates.value.size
+  return allDaysInPeriod.value.filter(d => !unavailableDates.value.has(d)).length
 })
 
 const notAvailableDays = computed(() => {
-  return unavailableDates.value.size
+  return allDaysInPeriod.value.filter(d => unavailableDates.value.has(d)).length
 })
 
 function isNotAvailable(date) {
   return unavailableDates.value.has(date)
-}
-
-function isToday(date) {
-  const today = new Date().toISOString().split('T')[0]
-  return date === today
 }
 
 function toggleDay(date) {
@@ -191,25 +231,34 @@ function toggleDay(date) {
   } else {
     unavailableDates.value.add(date)
   }
-  // Force reactivity
   unavailableDates.value = new Set(unavailableDates.value)
+}
+
+function getDayTooltip(day) {
+  if (!day.inPeriod) return 'Buiten periode'
+  const date = new Date(day.date)
+  const dateStr = date.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+  const status = isNotAvailable(day.date) ? 'Niet beschikbaar' : 'Beschikbaar'
+  const springBreak = isSpringBreak(day.date) ? ' (Voorjaarsvakantie)' : ''
+  return `${dateStr}: ${status}${springBreak}`
+}
+
+function isSpringBreak(date) {
+  // Voorjaarsvakantie 2026: 21 feb - 1 maart (week 8-9)
+  const d = new Date(date)
+  return d >= new Date('2026-02-21') && d <= new Date('2026-03-01')
 }
 
 function saveAvailability() {
   try {
     const allData = JSON.parse(localStorage.getItem('wintersport2026-availability') || '{}')
-
-    // Convert unavailable dates to the format expected
     const userAvailability = {}
     unavailableDates.value.forEach(date => {
       userAvailability[date] = true
     })
-
-    // Save for this user
     allData[userId.value] = userAvailability
-
     localStorage.setItem('wintersport2026-availability', JSON.stringify(allData))
-    saveMessage.value = 'Beschikbaarheid opgeslagen!'
+    saveMessage.value = 'Opgeslagen!'
     setTimeout(() => saveMessage.value = '', 3000)
   } catch (error) {
     saveMessage.value = 'Fout bij opslaan'
@@ -220,15 +269,12 @@ function loadAvailability() {
   try {
     const allData = JSON.parse(localStorage.getItem('wintersport2026-availability') || '{}')
     const userAvailability = allData[userId.value] || {}
-
-    // Convert to Set of dates
     const dates = new Set()
     Object.keys(userAvailability).forEach(date => {
       if (userAvailability[date]) {
         dates.add(date)
       }
     })
-
     unavailableDates.value = dates
   } catch (error) {
     console.error('Error loading availability:', error)
@@ -317,39 +363,22 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  background: var(--color-snow);
-  border: 1px solid var(--color-frost);
+  background: #d1fae5;
+  border: 1px solid #34d399;
   border-radius: 12px;
   margin-bottom: 2rem;
   font-weight: 500;
-  color: var(--color-primary);
+  color: #065f46;
 }
 
-.calendar-section {
+.legend-section {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem 1.5rem;
   background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
-  margin-bottom: 2rem;
-}
-
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.calendar-header h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.legend {
-  display: flex;
-  gap: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .legend-item {
@@ -358,118 +387,154 @@ onMounted(() => {
   gap: 0.5rem;
   font-size: 0.875rem;
   color: var(--color-gray-600);
+  font-weight: 500;
 }
 
 .legend-box {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: 3px;
   border: 1px solid var(--color-gray-300);
 }
 
 .legend-box.available {
-  background: var(--color-snow);
+  background: #22c55e;
+  border-color: #16a34a;
 }
 
 .legend-box.not-available {
-  background: var(--color-primary);
+  background: #ef4444;
+  border-color: #dc2626;
 }
 
-.calendar-scroll {
-  overflow-x: auto;
-  margin: 0 -2rem;
-  padding: 0 2rem;
+.github-calendar-section {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
 }
 
-.calendar-horizontal {
-  display: flex;
-  gap: 2rem;
-  min-width: min-content;
-}
-
-.month-section {
-  flex-shrink: 0;
-}
-
-.month-header {
-  font-size: 1.125rem;
+.github-calendar-section h2 {
+  font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--color-primary);
+  margin-bottom: 1.5rem;
 }
 
-.days-grid {
+.calendar-wrapper {
+  overflow-x: auto;
+}
+
+.month-labels {
   display: flex;
-  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding-left: 40px;
 }
 
-.weekday-labels {
-  display: grid;
-  grid-template-columns: repeat(7, 40px);
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.weekday-label {
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.month-label {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
 }
 
-.days-container {
-  display: grid;
-  grid-template-columns: repeat(7, 40px);
-  gap: 4px;
+.calendar-grid {
+  display: flex;
+  gap: 3px;
+}
+
+.weekday-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 8px;
+  justify-content: space-around;
+}
+
+.weekday-label {
+  height: 11px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  width: 30px;
+}
+
+.weeks-container {
+  display: flex;
+  gap: 3px;
+}
+
+.week-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .day-cell {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--color-snow);
-  border: 2px solid var(--color-gray-200);
   position: relative;
 }
 
-.day-cell:hover {
-  transform: scale(1.1);
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+.day-number {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+.day-cell.available {
+  background: #22c55e;
+  border: 1px solid #16a34a;
 }
 
 .day-cell.not-available {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: white;
+  background: #ef4444;
+  border: 1px solid #dc2626;
 }
 
-.day-cell.other-month {
-  opacity: 0.3;
-  cursor: default;
+.day-cell.out-of-period {
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
-.day-cell.other-month:hover {
-  transform: none;
-  box-shadow: none;
+.day-cell.spring-break {
+  border: 2px solid #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
 }
 
-.day-cell.today {
-  border-color: var(--color-accent);
-  border-width: 3px;
-  font-weight: 700;
+.day-cell:not(.out-of-period):hover {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.day-number {
-  font-size: 0.875rem;
+.week-numbers {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+  padding-left: 40px;
+}
+
+.week-number {
+  width: 28px;
+  font-size: 0.625rem;
+  color: var(--color-gray-400);
+  text-align: center;
   font-weight: 500;
 }
 
@@ -486,11 +551,16 @@ onMounted(() => {
   padding: 1.5rem;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.stat-card svg {
-  color: var(--color-primary);
+.stat-icon-green {
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.stat-icon-red {
+  color: #ef4444;
   flex-shrink: 0;
 }
 
@@ -501,8 +571,15 @@ onMounted(() => {
 .stat-number {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--color-primary);
   margin-bottom: 0.25rem;
+}
+
+.stat-number.green {
+  color: #22c55e;
+}
+
+.stat-number.red {
+  color: #ef4444;
 }
 
 .stat-label {
@@ -515,10 +592,6 @@ onMounted(() => {
     font-size: 2rem;
   }
 
-  .calendar-section {
-    padding: 1.5rem;
-  }
-
   .header-actions {
     width: 100%;
   }
@@ -526,22 +599,29 @@ onMounted(() => {
   .header-actions button {
     flex: 1;
   }
+
+  .legend-section {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
-  .calendar-section,
-  .stat-card {
+  .github-calendar-section,
+  .stat-card,
+  .legend-section {
     background: var(--color-gray-800);
   }
 
-  .legend-box {
-    border-color: var(--color-gray-600);
+  .message {
+    background: #065f46;
+    border-color: #059669;
+    color: #d1fae5;
   }
 
-  .day-cell {
+  .day-cell.out-of-period {
     background: var(--color-gray-700);
     border-color: var(--color-gray-600);
-    color: var(--color-gray-100);
   }
 }
 </style>

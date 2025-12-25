@@ -12,7 +12,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Home },
-    { path: '/datumplanner', component: DatePlanner },
+    { path: '/planner', component: DatePlanner },
     { path: '/kaart', component: Map },
     { path: '/login', component: Login },
     { path: '/mijn-beschikbaarheid', component: MyAvailability },

@@ -19,9 +19,9 @@
         <h1 class="hero-title">Wintersport 2026</h1>
         <p class="hero-subtitle">Guus · Rene · Harm · Dirk</p>
         <div class="hero-actions">
-          <router-link to="/login" class="btn-primary">
+          <router-link to="/planner" class="btn-primary">
             <Calendar :size="20" :stroke-width="2" />
-            Plan je data
+            Naar Planner
           </router-link>
           <router-link to="/kaart" class="btn-secondary">
             <MapPin :size="20" :stroke-width="2" />
@@ -34,7 +34,7 @@
     <section class="features">
       <div class="container">
         <div class="feature-grid">
-          <router-link to="/login" class="feature-card">
+          <router-link to="/planner" class="feature-card">
             <div class="feature-icon">
               <Calendar :size="32" :stroke-width="1.5" />
             </div>

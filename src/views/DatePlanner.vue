@@ -3,10 +3,14 @@
     <div class="container">
       <header class="planner-header">
         <div>
-          <h1>Beschikbaarheid Overzicht</h1>
-          <p class="subtitle">Gezamenlijke beschikbaarheid van alle deelnemers</p>
+          <h1>Wintersport 2026 Planner</h1>
+          <p class="subtitle">Plan je beschikbaarheid en bekijk wanneer iedereen kan</p>
         </div>
         <div class="header-actions">
+          <router-link to="/login" class="btn-login">
+            <User :size="20" :stroke-width="2" />
+            <span>Mijn Beschikbaarheid</span>
+          </router-link>
           <button @click="loadAvailability" class="btn-icon" title="Herladen">
             <RefreshCw :size="20" :stroke-width="2" />
           </button>
@@ -18,23 +22,23 @@
         <div class="legend-grid">
           <div class="legend-item">
             <div class="legend-box level-4"></div>
-            <span>Iedereen beschikbaar (4/4)</span>
+            <span>Iedereen beschikbaar (4/4) - Donkergroen</span>
           </div>
           <div class="legend-item">
             <div class="legend-box level-3"></div>
-            <span>3 personen beschikbaar</span>
+            <span>3 personen beschikbaar - Groen</span>
           </div>
           <div class="legend-item">
             <div class="legend-box level-2"></div>
-            <span>2 personen beschikbaar</span>
+            <span>2 personen beschikbaar - Lichtgroen</span>
           </div>
           <div class="legend-item">
             <div class="legend-box level-1"></div>
-            <span>1 persoon beschikbaar</span>
+            <span>1 persoon beschikbaar - Lichtrood</span>
           </div>
           <div class="legend-item">
             <div class="legend-box level-0"></div>
-            <span>Niemand beschikbaar</span>
+            <span>Niemand beschikbaar - Rood</span>
           </div>
         </div>
       </div>
@@ -50,18 +54,51 @@
             {{ participant.name }}
           </div>
           <div class="participant-github-calendar">
-            <div class="months-row">
-              <div v-for="month in months" :key="month.name" class="month-label" :style="{ width: `${month.days * 14}px` }">
-                {{ month.name }}
+            <div class="calendar-wrapper">
+              <div class="month-labels">
+                <div v-for="month in months" :key="month.name" class="month-label" :style="{ width: `${month.weeks * 31}px` }">
+                  {{ month.name }}
+                </div>
               </div>
-            </div>
-            <div class="days-row">
-              <div
-                v-for="day in allDays"
-                :key="day"
-                :class="['day-box', getDayClass(day, participant.id)]"
-                :title="getDayTooltip(day, participant.id)"
-              >
+
+              <div class="calendar-grid">
+                <div class="weekday-labels">
+                  <div class="weekday-label">Ma</div>
+                  <div class="weekday-label">Di</div>
+                  <div class="weekday-label">Wo</div>
+                  <div class="weekday-label">Do</div>
+                  <div class="weekday-label">Vr</div>
+                  <div class="weekday-label">Za</div>
+                  <div class="weekday-label">Zo</div>
+                </div>
+
+                <div class="weeks-container">
+                  <div
+                    v-for="week in allWeeks"
+                    :key="week.start"
+                    class="week-column"
+                  >
+                    <div
+                      v-for="day in week.days"
+                      :key="day.date"
+                      :class="['day-box', {
+                        'available': !availability[participant.id]?.[day.date] && day.inPeriod,
+                        'not-available': availability[participant.id]?.[day.date] && day.inPeriod,
+                        'out-of-period': !day.inPeriod,
+                        'spring-break': isSpringBreak(day.date) && day.inPeriod
+                      }]"
+                      :title="getDayTooltip(day, participant.id)"
+                    >
+                      <span v-if="day.inPeriod" class="day-number">{{ day.day }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="week-numbers">
+                <div v-for="week in allWeeks" :key="week.start" class="week-number">
+                  W{{ week.weekNumber }}
+                </div>
               </div>
             </div>
           </div>
@@ -70,23 +107,50 @@
 
       <div class="combined-calendar">
         <h2>Gecombineerde Beschikbaarheid</h2>
-        <p class="section-subtitle">Hoe meer mensen beschikbaar, hoe groener de dag</p>
+        <p class="section-subtitle">Groen = meer mensen beschikbaar, Rood = minder mensen beschikbaar</p>
 
-        <div class="calendar-scroll">
-          <div class="github-calendar">
-            <div class="months-header">
-              <div v-for="month in months" :key="month.name" class="month-header" :style="{ width: `${month.days * 14}px` }">
-                {{ month.name }}
+        <div class="calendar-wrapper">
+          <div class="month-labels">
+            <div v-for="month in months" :key="month.name" class="month-label" :style="{ width: `${month.weeks * 31}px` }">
+              {{ month.name }}
+            </div>
+          </div>
+
+          <div class="calendar-grid">
+            <div class="weekday-labels">
+              <div class="weekday-label">Ma</div>
+              <div class="weekday-label">Di</div>
+              <div class="weekday-label">Wo</div>
+              <div class="weekday-label">Do</div>
+              <div class="weekday-label">Vr</div>
+              <div class="weekday-label">Za</div>
+              <div class="weekday-label">Zo</div>
+            </div>
+
+            <div class="weeks-container">
+              <div
+                v-for="week in allWeeks"
+                :key="week.start"
+                class="week-column"
+              >
+                <div
+                  v-for="day in week.days"
+                  :key="day.date"
+                  :class="['day-cell', getAvailabilityClass(day), {
+                    'out-of-period': !day.inPeriod,
+                    'spring-break': isSpringBreak(day.date) && day.inPeriod
+                  }]"
+                  :title="getAvailabilityTooltip(day)"
+                >
+                  <span v-if="day.inPeriod" class="day-number">{{ day.day }}</span>
+                </div>
               </div>
             </div>
-            <div class="days-container">
-              <div
-                v-for="day in allDays"
-                :key="day"
-                :class="['day-cell', getAvailabilityClass(day)]"
-                :title="getAvailabilityTooltip(day)"
-              >
-              </div>
+          </div>
+
+          <div class="week-numbers">
+            <div v-for="week in allWeeks" :key="week.start" class="week-number">
+              W{{ week.weekNumber }}
             </div>
           </div>
         </div>
@@ -137,6 +201,79 @@ const participants = [
 
 const availability = ref({})
 
+const allWeeks = computed(() => {
+  const weeks = []
+  const startDate = new Date('2026-01-05') // Monday of first week
+  const endDate = new Date('2026-04-26') // Last Sunday in April
+
+  let currentMonday = new Date(startDate)
+  let weekNumber = 1
+
+  while (currentMonday <= endDate) {
+    const week = {
+      start: currentMonday.toISOString().split('T')[0],
+      weekNumber: weekNumber,
+      days: []
+    }
+
+    // Add 7 days for this week
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(currentMonday)
+      day.setDate(day.getDate() + i)
+      const dateStr = day.toISOString().split('T')[0]
+      const inPeriod = day >= new Date('2026-01-01') && day <= new Date('2026-04-30')
+
+      week.days.push({
+        date: dateStr,
+        day: day.getDate(),
+        month: day.getMonth(),
+        inPeriod: inPeriod
+      })
+    }
+
+    weeks.push(week)
+    currentMonday.setDate(currentMonday.getDate() + 7)
+    weekNumber++
+  }
+
+  return weeks
+})
+
+const months = computed(() => {
+  const monthData = []
+  const monthNames = ['Jan', 'Feb', 'Mrt', 'Apr']
+
+  // Calculate weeks per month based on which month has the most days in each week
+  const monthWeeks = [0, 0, 0, 0] // Jan, Feb, Mrt, Apr
+
+  allWeeks.value.forEach(week => {
+    // Count days per month in this week
+    const daysPerMonth = [0, 0, 0, 0]
+    week.days.forEach(day => {
+      if (day.inPeriod) {
+        daysPerMonth[day.month]++
+      }
+    })
+
+    // Assign week to the month with most days
+    const maxMonth = daysPerMonth.indexOf(Math.max(...daysPerMonth))
+    if (maxMonth >= 0 && maxMonth < 4) {
+      monthWeeks[maxMonth]++
+    }
+  })
+
+  monthNames.forEach((name, index) => {
+    if (monthWeeks[index] > 0) {
+      monthData.push({
+        name: name,
+        weeks: monthWeeks[index]
+      })
+    }
+  })
+
+  return monthData
+})
+
 const allDays = computed(() => {
   const days = []
   const start = new Date('2026-01-01')
@@ -151,25 +288,6 @@ const allDays = computed(() => {
   return days
 })
 
-const months = computed(() => {
-  const monthsData = []
-  const monthNames = ['Jan', 'Feb', 'Mrt', 'Apr']
-
-  for (let m = 0; m < 4; m++) {
-    const year = 2026
-    const firstDay = new Date(year, m, 1)
-    const lastDay = new Date(year, m + 1, 0)
-    const days = lastDay.getDate()
-
-    monthsData.push({
-      name: monthNames[m],
-      days: days
-    })
-  }
-
-  return monthsData
-})
-
 const topDays = computed(() => {
   return allDays.value.map(date => {
     const available = participants.filter(p =>
@@ -182,34 +300,43 @@ const topDays = computed(() => {
     .slice(0, 20)
 })
 
-function getAvailabilityClass(date) {
+function getAvailabilityClass(day) {
+  if (!day.inPeriod) return ''
+
   const available = participants.filter(p =>
-    !availability.value[p.id]?.[date]
+    !availability.value[p.id]?.[day.date]
   ).length
 
   return `level-${available}`
 }
 
-function getAvailabilityTooltip(date) {
+function getAvailabilityTooltip(day) {
+  if (!day.inPeriod) return 'Buiten periode'
+
   const available = participants.filter(p =>
-    !availability.value[p.id]?.[date]
+    !availability.value[p.id]?.[day.date]
   ).length
 
   const names = participants
-    .filter(p => !availability.value[p.id]?.[date])
+    .filter(p => !availability.value[p.id]?.[day.date])
     .map(p => p.name)
     .join(', ')
 
-  return `${formatDate(date)}: ${available}/4 beschikbaar${names ? ` (${names})` : ''}`
+  const springBreak = isSpringBreak(day.date) ? ' (Voorjaarsvakantie)' : ''
+  return `${formatDate(day.date)}: ${available}/4 beschikbaar${names ? ` (${names})` : ''}${springBreak}`
 }
 
-function getDayClass(date, participantId) {
-  return availability.value[participantId]?.[date] ? 'not-available' : 'available'
+function getDayTooltip(day, participantId) {
+  if (!day.inPeriod) return 'Buiten periode'
+  const status = availability.value[participantId]?.[day.date] ? 'Niet beschikbaar' : 'Beschikbaar'
+  const springBreak = isSpringBreak(day.date) ? ' (Voorjaarsvakantie)' : ''
+  return `${formatDate(day.date)}: ${status}${springBreak}`
 }
 
-function getDayTooltip(date, participantId) {
-  const status = availability.value[participantId]?.[date] ? 'Niet beschikbaar' : 'Beschikbaar'
-  return `${formatDate(date)}: ${status}`
+function isSpringBreak(date) {
+  // Voorjaarsvakantie 2026: 21 feb - 1 maart (week 8-9)
+  const d = new Date(date)
+  return d >= new Date('2026-02-21') && d <= new Date('2026-03-01')
 }
 
 function isParticipantAvailable(date, participantId) {
@@ -285,6 +412,28 @@ onMounted(() => {
 .header-actions {
   display: flex;
   gap: 0.75rem;
+  align-items: center;
+}
+
+.btn-login {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.btn-login:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .btn-icon {
@@ -292,6 +441,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: white;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--color-gray-50);
+  border-color: var(--color-primary);
 }
 
 .legend-section {
@@ -363,41 +522,120 @@ onMounted(() => {
   overflow-x: auto;
 }
 
-.months-row, .months-header {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 4px;
+.calendar-wrapper {
+  overflow-x: auto;
 }
 
-.month-label, .month-header {
+.month-labels {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding-left: 40px;
+}
+
+.month-label {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center;
 }
 
-.days-row, .days-container {
+.calendar-grid {
   display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.weekday-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 8px;
+  justify-content: space-around;
+}
+
+.weekday-label {
+  height: 28px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  width: 30px;
+}
+
+.weeks-container {
+  display: flex;
+  gap: 3px;
+}
+
+.week-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .day-box, .day-cell {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   border: 1px solid var(--color-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
-.day-box.available {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+.day-number {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
 }
 
-.day-box.not-available {
-  background: var(--color-gray-200);
-  border-color: var(--color-gray-300);
+.day-box.available, .day-cell.available {
+  background: #22c55e;
+  border-color: #16a34a;
+}
+
+.day-box.not-available, .day-cell.not-available {
+  background: #ef4444;
+  border-color: #dc2626;
+}
+
+.day-box.out-of-period, .day-cell.out-of-period {
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-200);
+  opacity: 0.4;
+}
+
+.day-box.spring-break, .day-cell.spring-break {
+  border: 2px solid #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+}
+
+.day-cell:hover:not(.out-of-period) {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.week-numbers {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+  padding-left: 40px;
+}
+
+.week-number {
+  width: 28px;
+  font-size: 0.625rem;
+  color: var(--color-gray-400);
+  text-align: center;
+  font-weight: 500;
 }
 
 .combined-calendar {
@@ -414,21 +652,11 @@ onMounted(() => {
   margin-bottom: 0.5rem;
 }
 
-.calendar-scroll {
-  overflow-x: auto;
-  margin: 0 -2rem;
-  padding: 0 2rem;
-}
-
-.github-calendar {
-  min-width: min-content;
-}
-
-.level-0 { background: var(--color-gray-100); border-color: var(--color-gray-200); }
-.level-1 { background: #bfdbfe; border-color: #93c5fd; }
-.level-2 { background: #60a5fa; border-color: #3b82f6; }
-.level-3 { background: #3b82f6; border-color: #2563eb; }
-.level-4 { background: #1d4ed8; border-color: #1e40af; }
+.level-0.day-cell { background: #ef4444; border-color: #dc2626; }
+.level-1.day-cell { background: #fca5a5; border-color: #f87171; }
+.level-2.day-cell { background: #86efac; border-color: #4ade80; }
+.level-3.day-cell { background: #22c55e; border-color: #16a34a; }
+.level-4.day-cell { background: #15803d; border-color: #166534; }
 
 .best-days {
   background: white;
@@ -464,8 +692,28 @@ onMounted(() => {
 }
 
 .day-summary.level-4 {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  border-color: var(--color-primary);
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-color: #22c55e;
+}
+
+.day-summary.level-3 {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-color: #86efac;
+}
+
+.day-summary.level-2 {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border-color: #fca5a5;
+}
+
+.day-summary.level-1 {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-color: #f87171;
+}
+
+.day-summary.level-0 {
+  background: linear-gradient(135deg, #fecaca, #fca5a5);
+  border-color: #ef4444;
 }
 
 .day-info {
@@ -509,14 +757,14 @@ onMounted(() => {
 }
 
 .participant-badge.available {
-  background: var(--color-primary);
+  background: #22c55e;
   color: white;
 }
 
 .availability-count {
   font-weight: 600;
   font-size: 1.125rem;
-  color: var(--color-primary);
+  color: #22c55e;
   min-width: 50px;
   text-align: right;
 }
@@ -566,7 +814,23 @@ onMounted(() => {
   }
 
   .day-summary.level-4 {
-    background: linear-gradient(135deg, #1e293b, #334155);
+    background: linear-gradient(135deg, #064e3b, #065f46);
+  }
+
+  .day-summary.level-3 {
+    background: linear-gradient(135deg, #065f46, #047857);
+  }
+
+  .day-summary.level-2 {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  }
+
+  .day-summary.level-1 {
+    background: linear-gradient(135deg, #991b1b, #b91c1c);
+  }
+
+  .day-summary.level-0 {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
   }
 }
 </style>

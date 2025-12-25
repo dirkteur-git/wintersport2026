@@ -322,6 +322,7 @@ onMounted(() => {
 .map-container {
   flex: 1;
   padding: 2rem;
+  height: calc(100vh - 200px);
   min-height: 600px;
 }
 

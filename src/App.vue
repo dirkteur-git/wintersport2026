@@ -18,8 +18,7 @@
 
         <nav class="desktop-nav">
           <router-link to="/">Home</router-link>
-          <router-link to="/login">Planner</router-link>
-          <router-link to="/datumplanner">Overzicht</router-link>
+          <router-link to="/planner">Planner</router-link>
           <router-link to="/kaart">Kaart</router-link>
         </nav>
       </div>
@@ -31,13 +30,9 @@
           <Home :size="20" :stroke-width="2" />
           <span>Home</span>
         </router-link>
-        <router-link to="/login" @click="mobileMenuOpen = false">
+        <router-link to="/planner" @click="mobileMenuOpen = false">
           <Calendar :size="20" :stroke-width="2" />
           <span>Planner</span>
-        </router-link>
-        <router-link to="/datumplanner" @click="mobileMenuOpen = false">
-          <Calendar :size="20" :stroke-width="2" />
-          <span>Overzicht</span>
         </router-link>
         <router-link to="/kaart" @click="mobileMenuOpen = false">
           <MapPin :size="20" :stroke-width="2" />

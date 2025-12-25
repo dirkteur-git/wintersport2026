@@ -17,6 +17,15 @@
           >
             <User :size="32" :stroke-width="1.5" />
             <span>{{ participant.name }}</span>
+            <div class="availability-bar">
+              <div
+                v-for="(segment, index) in getAvailabilitySegments(participant.id)"
+                :key="index"
+                class="availability-segment"
+                :class="segment.available ? 'available' : 'not-available'"
+                :style="{ width: segment.width + '%' }"
+              ></div>
+            </div>
           </button>
         </div>
       </div>
@@ -25,10 +34,12 @@
 </template>
 
 <script setup>
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Mountain, User } from 'lucide-vue-next'
 
 const router = useRouter()
+const availability = ref({})
 
 const participants = [
   { name: 'Guus', id: 'guus' },
@@ -37,10 +48,73 @@ const participants = [
   { name: 'Dirk', id: 'dirk' }
 ]
 
+const allDays = computed(() => {
+  const days = []
+  const start = new Date('2026-01-01')
+  const end = new Date('2026-04-30')
+  const current = new Date(start)
+
+  while (current <= end) {
+    days.push(current.toISOString().split('T')[0])
+    current.setDate(current.getDate() + 1)
+  }
+
+  return days
+})
+
+function getAvailabilitySegments(userId) {
+  const userAvailability = availability.value[userId] || {}
+  const segments = []
+  let currentSegment = null
+
+  allDays.value.forEach((day, index) => {
+    const isAvailable = !userAvailability[day]
+
+    if (!currentSegment || currentSegment.available !== isAvailable) {
+      // Start new segment
+      if (currentSegment) {
+        segments.push(currentSegment)
+      }
+      currentSegment = {
+        available: isAvailable,
+        count: 1
+      }
+    } else {
+      // Continue current segment
+      currentSegment.count++
+    }
+  })
+
+  // Push last segment
+  if (currentSegment) {
+    segments.push(currentSegment)
+  }
+
+  // Calculate widths as percentages
+  const totalDays = allDays.value.length
+  return segments.map(seg => ({
+    available: seg.available,
+    width: (seg.count / totalDays) * 100
+  }))
+}
+
 function selectParticipant(participant) {
   localStorage.setItem('wintersport2026-current-user', participant.id)
   router.push('/mijn-beschikbaarheid')
 }
+
+function loadAvailability() {
+  try {
+    const allData = JSON.parse(localStorage.getItem('wintersport2026-availability') || '{}')
+    availability.value = allData
+  } catch (error) {
+    console.error('Error loading availability:', error)
+  }
+}
+
+onMounted(() => {
+  loadAvailability()
+})
 </script>
 
 <style scoped>
@@ -118,6 +192,28 @@ function selectParticipant(participant) {
 
 .participant-btn:active {
   transform: translateY(-2px);
+}
+
+.availability-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+  display: flex;
+}
+
+.availability-segment {
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.availability-segment.available {
+  background: #22c55e;
+}
+
+.availability-segment.not-available {
+  background: #ef4444;
 }
 
 @media (max-width: 640px) {
